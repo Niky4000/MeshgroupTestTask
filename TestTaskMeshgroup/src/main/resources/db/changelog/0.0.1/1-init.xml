@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+
+	<changeSet author="nikita" id="create table user">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="user"/>
+			</not>
+		</preConditions>
+		<createTable tableName="user">
+			<column name="id" type="bigint">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="name" type="varchar(500)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="date_of_birth" type="date">
+				<constraints nullable="false"/>
+			</column>
+			<column name="password" type="varchar(500)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<createIndex indexName="userPk" tableName="user" unique="true">
+			<column name="id"/>
+		</createIndex>
+		<createIndex indexName="userName" tableName="user">
+			<column name="name"/>
+		</createIndex>
+	</changeSet>
+
+	<changeSet author="nikita" id="create table account">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="account"/>
+			</not>
+		</preConditions>
+		<createTable tableName="account">
+			<column name="id" type="bigint">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="user_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+			<column name="balance" type="decimal">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<createIndex indexName="accountPk" tableName="account" unique="true">
+			<column name="id"/>
+		</createIndex>
+		<createIndex indexName="accountFk" tableName="account" unique="true">
+			<column name="user_id"/>
+		</createIndex>
+		<addForeignKeyConstraint baseColumnNames="user_id"
+								 baseTableName="account"
+								 constraintName="account_fk"
+								 onDelete="CASCADE"
+								 onUpdate="CASCADE"
+								 referencedColumnNames="id"
+								 referencedTableName="user"
+								 validate="true"/>
+	</changeSet>
+
+	<changeSet author="nikita" id="create table email_data">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="email_data"/>
+			</not>
+		</preConditions>
+		<createTable tableName="email_data">
+			<column name="id" type="bigint">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="user_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+			<column name="email" type="varchar(500)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<createIndex indexName="emailPk" tableName="email_data" unique="true">
+			<column name="id"/>
+		</createIndex>
+		<createIndex indexName="emailFk" tableName="email_data" unique="true">
+			<column name="user_id"/>
+		</createIndex>
+		<addForeignKeyConstraint baseColumnNames="user_id"
+								 baseTableName="email_data"
+								 constraintName="email_fk"
+								 onDelete="CASCADE"
+								 onUpdate="CASCADE"
+								 referencedColumnNames="id"
+								 referencedTableName="user"
+								 validate="true"/>
+	</changeSet>
+
+	<changeSet author="nikita" id="create table phone_data">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="phone_data"/>
+			</not>
+		</preConditions>
+		<createTable tableName="phone_data">
+			<column name="id" type="bigint">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="user_id" type="bigint">
+				<constraints nullable="false"/>
+			</column>
+			<column name="phone" type="varchar(13)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<createIndex indexName="phonePk" tableName="phone_data" unique="true">
+			<column name="id"/>
+		</createIndex>
+		<createIndex indexName="phoneFk" tableName="phone_data" unique="true">
+			<column name="user_id"/>
+		</createIndex>
+		<addForeignKeyConstraint baseColumnNames="user_id"
+								 baseTableName="phone_data"
+								 constraintName="phone_fk"
+								 onDelete="CASCADE"
+								 onUpdate="CASCADE"
+								 referencedColumnNames="id"
+								 referencedTableName="user"
+								 validate="true"/>
+	</changeSet>
+</databaseChangeLog>

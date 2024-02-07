@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: meshgroup
+  mesh-datasource:
+    jdbcUrl: ${DB_JDBC_URL:jdbc:postgresql://localhost:5438/mesh?currentSchema=public&user=postgres&password=postgres}
+    driverClassName: org.postgresql.Driver
+    liquibase:
+      enabled: true
+      change-log: classpath:db/changelog/master.xml
+    maximumPoolSize: ${MAXIMUM_POOL_SIZE:15}

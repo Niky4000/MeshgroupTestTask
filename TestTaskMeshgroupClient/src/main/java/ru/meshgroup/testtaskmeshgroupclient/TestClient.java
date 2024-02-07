@@ -35,11 +35,18 @@ public class TestClient {
         System.out.println(authRequest);
         String token = getToken(authRequest);
         System.out.println("token:" + token + "!");
-        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
-        System.out.println(helloRequest);
-        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(token), null);
-        System.out.println(startResult);
-        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/test2", RequestMethod.POST, getAuthMap(token), "Hello! Hello post method " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()) + "!");
+//        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
+//        System.out.println(helloRequest);
+//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(token), null);
+//        System.out.println(startResult);
+//        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/test2", RequestMethod.POST, getAuthMap(token), "Hello! Hello post method " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()) + "!");
+//        System.out.println(startResult2);
+        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/addUser", RequestMethod.POST, getAuthMap(token), "{\"id\": \"2\",\n\"name\": \"user2\",\n\"dateOfBirth\": \"2023-05-12\",\n\"password\": \"password\""
+                + ",\n\"accountBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"balance\": \"200\"}]"
+                + ",\n\"mailBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"email\": \"hello@world.ru\"}]"
+                + ",\n\"phoneBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"phone\": \"8-927-777-77-77\"}]}");
+//        System.out.println(startResult2);
+//        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/addUser", RequestMethod.POST, getAuthMap(token), "{\"name\": \"user2\",\n\"password\": \"password\"}");
         System.out.println(startResult2);
     }
 
