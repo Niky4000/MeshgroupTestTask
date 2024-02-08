@@ -3,7 +3,7 @@ package ru.meshgroup.controller.bean;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-public class PhoneBean {
+public class PhoneBean implements LinkedBean {
 
     @NotNull(message = "Идентификатор учётной записи не может быть пустым!")
     private Long id;
@@ -13,6 +13,16 @@ public class PhoneBean {
     @Pattern(regexp = "^\\d-\\d\\d\\d-\\d\\d\\d-\\d\\d-\\d\\d$", message = "Телефон указан неправильно!")
     private String phone;
 
+    public PhoneBean() {
+    }
+
+    public PhoneBean(Long id, Long userId, String phone) {
+        this.id = id;
+        this.userId = userId;
+        this.phone = phone;
+    }
+
+    @Override
     public Long getId() {
         return id;
     }
@@ -21,6 +31,7 @@ public class PhoneBean {
         this.id = id;
     }
 
+    @Override
     public Long getUserId() {
         return userId;
     }
@@ -35,5 +46,10 @@ public class PhoneBean {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    @Override
+    public String getValue() {
+        return phone;
     }
 }

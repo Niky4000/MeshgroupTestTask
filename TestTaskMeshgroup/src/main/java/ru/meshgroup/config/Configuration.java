@@ -26,7 +26,6 @@ import org.springframework.validation.Validator;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.client.RestTemplate;
 
-
 @org.springframework.context.annotation.Configuration
 public class Configuration {
 
@@ -36,13 +35,15 @@ public class Configuration {
     }
 
     @Bean
+    @Qualifier("meshDataSource")
     @ConfigurationProperties("spring.mesh-datasource")
-    public DataSource meshDataSource() {
+    public DataSource getMeshDataSource() {
         return DataSourceBuilder.create().build();
     }
 
     @Bean
-    public NamedParameterJdbcTemplate meshJdbcTemplate(@Qualifier("meshDataSource") DataSource dataSource) {
+    @Qualifier("meshJdbc")
+    public NamedParameterJdbcTemplate getMeshJdbcTemplate(@Qualifier("meshDataSource") DataSource dataSource) {
         return new NamedParameterJdbcTemplate(dataSource);
     }
 
@@ -62,8 +63,8 @@ public class Configuration {
     }
 
     @Bean
-    public SpringLiquibase liquibase() {
-        return springLiquibase(meshDataSource(), liquibaseProperties());
+    public SpringLiquibase liquibase(@Qualifier("meshDataSource") DataSource ds) {
+        return springLiquibase(ds, liquibaseProperties());
     }
 
     @Bean

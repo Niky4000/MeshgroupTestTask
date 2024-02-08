@@ -26,6 +26,16 @@ public class UserBean {
     @Size(min = 1, message = "У пользователя должен быть как минимум один телефон!")
     private List<PhoneBean> phoneBeanList;
 
+    public UserBean() {
+    }
+
+    public UserBean(Long id, String name, LocalDate dateOfBirth, String password) {
+        this.id = id;
+        this.name = name;
+        this.dateOfBirth = dateOfBirth;
+        this.password = password;
+    }
+
     public Long getId() {
         return id;
     }

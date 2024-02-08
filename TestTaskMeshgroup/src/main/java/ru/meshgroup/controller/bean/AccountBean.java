@@ -1,5 +1,6 @@
 package ru.meshgroup.controller.bean;
 
+import java.math.BigDecimal;
 import javax.validation.constraints.NotNull;
 
 public class AccountBean {
@@ -9,7 +10,16 @@ public class AccountBean {
     @NotNull(message = "Ссылка учётной записи на пользователя не может быть пустой!")
     private Long userId;
     @NotNull(message = "Баланс учётной записи не может быть пустым!")
-    private Long balance;
+    private BigDecimal balance;
+
+    public AccountBean() {
+    }
+
+    public AccountBean(Long id, Long userId, BigDecimal balance) {
+        this.id = id;
+        this.userId = userId;
+        this.balance = balance;
+    }
 
     public Long getId() {
         return id;
@@ -27,11 +37,11 @@ public class AccountBean {
         this.userId = userId;
     }
 
-    public Long getBalance() {
+    public BigDecimal getBalance() {
         return balance;
     }
 
-    public void setBalance(Long balance) {
+    public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
 }

@@ -4,13 +4,13 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
 
-	<changeSet author="nikita" id="create table user">
+	<changeSet author="nikita" id="create table users">
 		<preConditions onFail="MARK_RAN">
 			<not>
-				<tableExists tableName="user"/>
+				<tableExists tableName="users"/>
 			</not>
 		</preConditions>
-		<createTable tableName="user">
+		<createTable tableName="users">
 			<column name="id" type="bigint">
 				<constraints primaryKey="true" nullable="false"/>
 			</column>
@@ -24,10 +24,10 @@
 				<constraints nullable="false"/>
 			</column>
 		</createTable>
-		<createIndex indexName="userPk" tableName="user" unique="true">
+		<createIndex indexName="userPk" tableName="users" unique="true">
 			<column name="id"/>
 		</createIndex>
-		<createIndex indexName="userName" tableName="user">
+		<createIndex indexName="userName" tableName="users">
 			<column name="name"/>
 		</createIndex>
 	</changeSet>
@@ -45,7 +45,7 @@
 			<column name="user_id" type="bigint">
 				<constraints nullable="false"/>
 			</column>
-			<column name="balance" type="decimal">
+			<column name="balance" type="decimal(38,2)">
 				<constraints nullable="false"/>
 			</column>
 		</createTable>
@@ -55,13 +55,16 @@
 		<createIndex indexName="accountFk" tableName="account" unique="true">
 			<column name="user_id"/>
 		</createIndex>
+		<sql>
+			alter table account add constraint balance_check check (balance>0)
+		</sql>
 		<addForeignKeyConstraint baseColumnNames="user_id"
 								 baseTableName="account"
 								 constraintName="account_fk"
 								 onDelete="CASCADE"
 								 onUpdate="CASCADE"
 								 referencedColumnNames="id"
-								 referencedTableName="user"
+								 referencedTableName="users"
 								 validate="true"/>
 	</changeSet>
 
@@ -85,8 +88,11 @@
 		<createIndex indexName="emailPk" tableName="email_data" unique="true">
 			<column name="id"/>
 		</createIndex>
-		<createIndex indexName="emailFk" tableName="email_data" unique="true">
+		<createIndex indexName="emailFk" tableName="email_data">
 			<column name="user_id"/>
+		</createIndex>
+		<createIndex indexName="emailIndex" tableName="email_data" unique="true">
+			<column name="email"/>
 		</createIndex>
 		<addForeignKeyConstraint baseColumnNames="user_id"
 								 baseTableName="email_data"
@@ -94,7 +100,7 @@
 								 onDelete="CASCADE"
 								 onUpdate="CASCADE"
 								 referencedColumnNames="id"
-								 referencedTableName="user"
+								 referencedTableName="users"
 								 validate="true"/>
 	</changeSet>
 
@@ -111,15 +117,18 @@
 			<column name="user_id" type="bigint">
 				<constraints nullable="false"/>
 			</column>
-			<column name="phone" type="varchar(13)">
+			<column name="phone" type="varchar(15)">
 				<constraints nullable="false"/>
 			</column>
 		</createTable>
 		<createIndex indexName="phonePk" tableName="phone_data" unique="true">
 			<column name="id"/>
 		</createIndex>
-		<createIndex indexName="phoneFk" tableName="phone_data" unique="true">
+		<createIndex indexName="phoneFk" tableName="phone_data">
 			<column name="user_id"/>
+		</createIndex>
+		<createIndex indexName="phoneIndex" tableName="phone_data" unique="true">
+			<column name="phone"/>
 		</createIndex>
 		<addForeignKeyConstraint baseColumnNames="user_id"
 								 baseTableName="phone_data"
@@ -127,7 +136,7 @@
 								 onDelete="CASCADE"
 								 onUpdate="CASCADE"
 								 referencedColumnNames="id"
-								 referencedTableName="user"
+								 referencedTableName="users"
 								 validate="true"/>
 	</changeSet>
 </databaseChangeLog>
