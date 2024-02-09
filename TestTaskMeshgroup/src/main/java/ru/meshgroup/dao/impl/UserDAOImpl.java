@@ -1,5 +1,8 @@
 package ru.meshgroup.dao.impl;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -7,6 +10,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +23,6 @@ import ru.meshgroup.controller.bean.UserBean;
 import ru.meshgroup.dao.UserDAO;
 import static ru.meshgroup.utils.DateUtils.toLocalDateFromSql;
 import ru.meshgroup.utils.SecurityUtils;
-import static ru.meshgroup.utils.SecurityUtils.getUserName;
 
 @Repository
 public class UserDAOImpl implements UserDAO {
@@ -26,6 +30,48 @@ public class UserDAOImpl implements UserDAO {
     @Autowired
     @Qualifier("meshJdbc")
     NamedParameterJdbcTemplate meshJdbcTemplate;
+
+    @Override
+    public List<UserBean> getUserList(String name, LocalDate dateOfBirth, String email, String phone, int offset, int size) {
+        StringBuilder query = new StringBuilder("select u.id,u.name,u.date_of_birth,u.password from users u");
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("size", size);
+        parameters.put("offset", offset);
+        boolean wasAnd = false;
+        if (name != null || dateOfBirth != null || email != null || phone != null) {
+            query.append(" where");
+        }
+        if (name != null) {
+            wasAnd = wasAnd(query, wasAnd);
+            query.append(" u.name like :name");
+            parameters.put("name", name + "%");
+        }
+        if (dateOfBirth != null) {
+            wasAnd = wasAnd(query, wasAnd);
+            query.append("  u.date_of_birth >= :dateOfBirth");
+            parameters.put("dateOfBirth", dateOfBirth);
+        }
+        if (email != null) {
+            wasAnd = wasAnd(query, wasAnd);
+            query.append(" exists (select 1 from email_data m where u.id=m.user_id and m.email=:email)");
+            parameters.put("email", email);
+        }
+        if (phone != null) {
+            wasAnd = wasAnd(query, wasAnd);
+            query.append(" exists (select 1 from phone_data p where u.id=p.user_id and p.phone=:phone)");
+            parameters.put("phone", phone);
+        }
+        query.append(" order by u.id limit :size offset :offset");
+        List<UserBean> userList = meshJdbcTemplate.query(query.toString(), parameters, getUserRowMapper()).stream().collect(Collectors.toList());
+        return userList;
+    }
+
+    private boolean wasAnd(StringBuilder query, boolean wasAnd) {
+        if (wasAnd) {
+            query.append(" and");
+        }
+        return true;
+    }
 
     @Override
     @Transactional
@@ -38,12 +84,15 @@ public class UserDAOImpl implements UserDAO {
 
     @Override
     public UserBean getUser(String name) {
-        UserBean user = Optional.ofNullable(meshJdbcTemplate.query("select id,date_of_birth,password from users where name=:name", Map.of("name", name), (rs, rowNum) -> {
-            return new UserBean(rs.getLong("id"), name, toLocalDateFromSql(rs.getDate("date_of_birth")), rs.getString("password"));
-        }).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
+        UserBean user = Optional.ofNullable(meshJdbcTemplate.query("select id,name,date_of_birth,password from users where name=:name", Map.of("name", name), getUserRowMapper()).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
         return user;
     }
 
+    private RowMapper<UserBean> getUserRowMapper() {
+        return (rs, rowNum) -> new UserBean(rs.getLong("id"), rs.getString("name"), toLocalDateFromSql(rs.getDate("date_of_birth")), rs.getString("password"));
+    }
+
+    @Override
     public UserBean getUser(UserBean userBean) {
         userBean.setAccountBeanList(getAccountBeanList(userBean.getId()));
         userBean.setMailBeanList(getMailBeanList(userBean.getId()));
@@ -90,10 +139,12 @@ public class UserDAOImpl implements UserDAO {
     }
 
     private List<AccountBean> getAccountBeanList(Long userId) {
-        List<AccountBean> mailBeanList = meshJdbcTemplate.query("select id,balance from account where user_id=:userId", Map.of("userId", userId), (rs, rowNum) -> {
-            return new AccountBean(rs.getLong("id"), userId, rs.getBigDecimal("balance"));
-        }).stream().collect(Collectors.toList());
-        return mailBeanList;
+        List<AccountBean> accountBeanList = meshJdbcTemplate.query("select id,user_id,balance from account where user_id=:userId", Map.of("userId", userId), accountRowMapper()).stream().collect(Collectors.toList());
+        return accountBeanList;
+    }
+
+    private RowMapper<AccountBean> accountRowMapper() {
+        return (rs, rowNum) -> new AccountBean(rs.getLong("id"), rs.getLong("user_id"), rs.getBigDecimal("balance"));
     }
 
     private List<MailBean> getMailBeanList(Long userId) {
@@ -120,5 +171,34 @@ public class UserDAOImpl implements UserDAO {
 
     private int delete(String tableName, Map<String, Object> parameters) {
         return meshJdbcTemplate.update(new StringBuilder("delete from ").append(tableName).append(" where id=:id and user_id=:userId").toString(), parameters);
+    }
+
+    @Override
+    public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) {
+        AccountBean accountBeanFrom;
+        AccountBean accountBeanTo;
+        if (userIdFrom.compareTo(userIdTo) < 0) {
+            accountBeanFrom = getLockedAccountBean(userIdFrom);
+            accountBeanTo = getLockedAccountBean(userIdTo);
+        } else {
+            accountBeanTo = getLockedAccountBean(userIdTo);
+            accountBeanFrom = getLockedAccountBean(userIdFrom);
+        }
+        if (accountBeanFrom != null && accountBeanTo != null && accountBeanFrom.getBalance().add(money.negate()).compareTo(BigDecimal.ZERO) >= 0) {
+            update("account", "balance", new TreeMap<>(Map.of("userId", userIdFrom, "id", accountBeanFrom.getId(), "value", accountBeanFrom.getBalance().add(money.negate()))));
+            update("account", "balance", new TreeMap<>(Map.of("userId", userIdTo, "id", accountBeanTo.getId(), "value", accountBeanTo.getBalance().add(money))));
+        }
+    }
+
+    private AccountBean getLockedAccountBean(Long userId) throws DataAccessException {
+        return Optional.ofNullable(meshJdbcTemplate.query(getAccountUpdateQuery(), Map.of("userId", userId), accountRowMapper()).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
+    }
+
+    String getAccountUpdateQuery() {
+        return "select id,user_id,balance from account where user_id=:userId" + forUpdate();
+    }
+
+    String forUpdate() {
+        return " for update";
     }
 }

@@ -35,8 +35,8 @@ public class TestClient {
 //		String startResult = new WebExampleClientStart().sendPost("http://localhost:8080/?str=TestMessage", RequestMethod.GET, getAuthMap(), null);
 //		System.out.println(startResult);
 
-//        addUsers(0, 100);
-        updateUser(10, "2000-08-14");
+        addUsers(0, 100);
+//        updateUser(10, "2000-08-14");
 
 //        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
 //        System.out.println(helloRequest);
