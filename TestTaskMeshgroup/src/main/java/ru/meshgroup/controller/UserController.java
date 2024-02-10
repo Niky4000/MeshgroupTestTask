@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import ru.meshgroup.controller.bean.TransferMoneyRequest;
 import ru.meshgroup.controller.bean.UserBean;
+import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.service.UserService;
 import ru.meshgroup.validator.UserOnlyValidator;
 import ru.meshgroup.validator.UserValidator;
@@ -29,7 +31,7 @@ import ru.meshgroup.validator.UserValidator;
 @Slf4j
 @RestController
 @RequestMapping("/api/test-controller")
-public class TestController {
+public class UserController {
 
     @Autowired
     UserValidator validator;
@@ -86,6 +88,26 @@ public class TestController {
                 return new ResponseEntity<>("Failure!", HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }, userBean, userOnlyValidator);
+    }
+
+    @PostMapping("/transferMoney")
+    public ResponseEntity<String> transferMoney(@RequestBody TransferMoneyRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User principal = (User) authentication.getPrincipal();
+            String username = principal.getUsername();
+            UserBean user = userService.getUser(username);
+            if (user != null) {
+                userService.transferMoney(user.getId(), request.getUserIdTo(), request.getMoney());
+                return new ResponseEntity<>("Ok!", HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("It's impossible to transfer money because source account " + username + " isn't found!", HttpStatus.BAD_REQUEST);
+            }
+        } catch (MoneyException me) {
+            return new ResponseEntity<>(me.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception me) {
+            return new ResponseEntity<>("Internal server error!", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @GetMapping("/test")

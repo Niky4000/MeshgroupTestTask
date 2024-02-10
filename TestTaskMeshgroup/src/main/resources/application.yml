@@ -8,3 +8,14 @@ spring:
       enabled: true
       change-log: classpath:db/changelog/master.xml
     maximumPoolSize: ${MAXIMUM_POOL_SIZE:15}
+springdoc:
+  packagesToScan: ru.meshgroup.controller
+  enabled: ${SPRINGDOC_ENABLED:true}
+  api-docs:
+    path: ${SWAGGER_DOCS_PATH:/swagger/v3/api-docs}
+  swagger-ui:
+    path: ${SWAGGER_UI_PATH:/swagger-ui}
+app:
+  task:
+    scheduling:
+      updateBalance: ${UPDATE_BALANCE:30000}

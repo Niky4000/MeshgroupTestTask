@@ -8,28 +8,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import javax.sql.DataSource;
 import liquibase.exception.LiquibaseException;
 import org.junit.Assert;
 import org.junit.Test;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.PlatformTransactionManager;
 import ru.meshgroup.controller.bean.AccountBean;
 import ru.meshgroup.controller.bean.MailBean;
 import ru.meshgroup.controller.bean.PhoneBean;
 import ru.meshgroup.controller.bean.UserBean;
-import static ru.meshgroup.utils.DbUtils.createInMemoryDataSource;
-import static ru.meshgroup.utils.DbUtils.getJdbcTemplate;
-import static ru.meshgroup.utils.DbUtils.getTransactionManager;
-import static ru.meshgroup.utils.DbUtils.liquibase;
-import static ru.meshgroup.utils.DbUtils.shutdown;
-import ru.meshgroup.utils.FieldUtil;
+import ru.meshgroup.controller.exceptions.MoneyException;
+import ru.meshgroup.test.utils.InitUtils;
 
-public class UserDAOImplTest {
+public class UserDAOImplTest extends InitUtils {
 
     @Test
     public void test() throws LiquibaseException, SQLException {
@@ -67,23 +58,6 @@ public class UserDAOImplTest {
         });
     }
 
-    private UserBean createUserBean(String userName, BigDecimal balance) {
-        Long userId = 1L;
-        UserBean userBean = new UserBean(userId, userName, LocalDate.of(2000, Month.APRIL, 28), "password");
-        userBean.setAccountBeanList(Arrays.asList(new AccountBean(1L, userId, balance)));
-        userBean.setMailBeanList(Arrays.asList(new MailBean(1L, userId, "email1"), new MailBean(2L, userId, "email2"), new MailBean(3L, userId, "email3")));
-        userBean.setPhoneBeanList(Arrays.asList(new PhoneBean(1L, userId, "phone1"), new PhoneBean(2L, userId, "phone2"), new PhoneBean(3L, userId, "phone3")));
-        return userBean;
-    }
-
-    private UserBean createUserBean2(Long userId, LocalDate userBirthDate, String userName, BigDecimal balance, int... indexes) {
-        UserBean userBean = new UserBean(userId, userName, userBirthDate, "password");
-        userBean.setAccountBeanList(Arrays.asList(new AccountBean(userId, userId, balance)));
-        userBean.setMailBeanList(IntStream.of(indexes).mapToObj(i -> new MailBean((long) i, userId, "email" + i)).collect(Collectors.toList()));
-        userBean.setPhoneBeanList(IntStream.of(indexes).mapToObj(i -> new PhoneBean((long) i, userId, "phone" + i)).collect(Collectors.toList()));
-        return userBean;
-    }
-
     @Test
     public void readUserTest() throws LiquibaseException, SQLException {
         execute(() -> new UserDAOImpl(), userDAOImpl -> {
@@ -117,34 +91,24 @@ public class UserDAOImplTest {
                 return "";
             }
         }, userDAOImpl -> {
-            userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", BigDecimal.valueOf(200.82), 1, 2, 3, 4));
-            userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", BigDecimal.valueOf(400.82), 5, 6, 7, 8, 9, 10, 11, 12));
-            userDAOImpl.transferMoney(1L, 2L, BigDecimal.valueOf(100));
-            UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUser("name"));
-            UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUser("name2"));
-            Assert.assertTrue(user1.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(100.82)));
-            Assert.assertTrue(user2.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(500.82)));
-            userDAOImpl.transferMoney(2L, 1L, BigDecimal.valueOf(200));
-            UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUser("name"));
-            UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUser("name2"));
-            Assert.assertTrue(user3.getAccountBeanList().get(0).getBalance().equals(user4.getAccountBeanList().get(0).getBalance()));
+            try {
+                final BigDecimal money1 = BigDecimal.valueOf(200.82);
+                final BigDecimal moneyToTransfer = BigDecimal.valueOf(100);
+                final BigDecimal money2 = money1.add(moneyToTransfer.multiply(BigDecimal.valueOf(2)));
+                userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", money1, 1, 2, 3, 4));
+                userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", money2, 5, 6, 7, 8, 9, 10, 11, 12));
+                userDAOImpl.transferMoney(1L, 2L, moneyToTransfer);
+                UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUser("name"));
+                UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUser("name2"));
+                Assert.assertTrue(user1.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(100.82)));
+                Assert.assertTrue(user2.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(500.82)));
+                userDAOImpl.transferMoney(2L, 1L, moneyToTransfer.multiply(BigDecimal.valueOf(2)));
+                UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUser("name"));
+                UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUser("name2"));
+                Assert.assertTrue(user3.getAccountBeanList().get(0).getBalance().equals(user4.getAccountBeanList().get(0).getBalance()));
+            } catch (MoneyException ex) {
+                throw new RuntimeException(ex);
+            }
         });
-    }
-
-    private void execute(Supplier<UserDAOImpl> userDAOImplSupplier, Consumer<UserDAOImpl> testImplementation) throws LiquibaseException, SQLException {
-        DataSource dataSource = createInMemoryDataSource();
-        try {
-            liquibase(dataSource, "classpath:db/changelog/master.xml");
-            PlatformTransactionManager transactionManager = getTransactionManager(dataSource);
-            NamedParameterJdbcTemplate meshJdbcTemplate = getJdbcTemplate(dataSource);
-            UserDAOImpl userDAOImpl = userDAOImplSupplier.get();
-            FieldUtil.setField(userDAOImpl, UserDAOImpl.class, meshJdbcTemplate, "meshJdbcTemplate");
-            testImplementation.accept(userDAOImpl);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        } finally {
-            shutdown(dataSource);
-        }
     }
 }

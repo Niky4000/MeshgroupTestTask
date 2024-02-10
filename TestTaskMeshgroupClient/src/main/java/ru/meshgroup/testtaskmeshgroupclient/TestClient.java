@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +38,7 @@ public class TestClient {
 
         addUsers(0, 100);
 //        updateUser(10, "2000-08-14");
+//        transferMoney(5, 10L, BigDecimal.valueOf(50.12));
 
 //        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
 //        System.out.println(helloRequest);
@@ -58,7 +60,6 @@ public class TestClient {
         String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"user" + index + "\",\n\"password\": \"password" + index + "\"}");
         System.out.println(authRequest);
         String token = getToken(authRequest);
-        System.out.println("token:" + token + "!");
 //        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/updateUser", RequestMethod.POST, getAuthMap(token),
 //                "{\"id\": \"2\",\n\"name\": \"user2\",\n\"dateOfBirth\": \"2023-05-12\",\n\"password\": \"password\"}");
         String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/updateUser", RequestMethod.POST, getAuthMap(token),
@@ -67,10 +68,7 @@ public class TestClient {
     }
 
     private static void addUsers(int start, int amount) throws Exception {
-        String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"meshgroup_user\",\n\"password\": \"password\"}");
-        System.out.println(authRequest);
-        String token = getToken(authRequest);
-        System.out.println("token:" + token + "!");
+        String token = getToken();
         for (int i = start; i < start + amount; i++) {
             LocalDate date = LocalDate.of(2000, 2, 2).plusDays(i);
             String dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -81,6 +79,23 @@ public class TestClient {
             String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/addUser", RequestMethod.POST, getAuthMap(token), post.toString());
             System.out.println(startResult);
         }
+    }
+
+    private static void transferMoney(int userFromIndex, Long userIdTo, BigDecimal money) throws Exception {
+        String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"user" + userFromIndex + "\",\n\"password\": \"password" + userFromIndex + "\"}");
+        System.out.println(authRequest);
+        String token = getToken(authRequest);
+        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/transferMoney", RequestMethod.POST, getAuthMap(token),
+                "{\"userIdTo\": \"" + userIdTo + "\",\n\"money\": \"" + money.toString() + "\"}");
+        System.out.println(startResult);
+    }
+
+    private static String getToken() throws Exception {
+        String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"meshgroup_user\",\n\"password\": \"password\"}");
+        System.out.println(authRequest);
+        String token = getToken(authRequest);
+        System.out.println("token:" + token + "!");
+        return token;
     }
 
     private static int telephoneNumberLength = 11;
@@ -121,6 +136,7 @@ public class TestClient {
         int indexOf = sendPost.indexOf(TOKEN_HEAD) + TOKEN_HEAD.length();
         int lastIndexOf = sendPost.indexOf("\"}");
         String token = sendPost.substring(indexOf, lastIndexOf);
+        System.out.println("token:" + token + "!");
         return token;
     }
 
@@ -142,7 +158,7 @@ public class TestClient {
     private static final int READ_TIMEOUT = 60000;
 
     private enum RequestMethod {
-        GET, POST
+        GET, POST, PATCH
     }
 
     @SuppressWarnings("all")
@@ -159,7 +175,7 @@ public class TestClient {
         con.setRequestMethod(requestMethod.name());
         headers.entrySet().forEach(entry -> con.setRequestProperty(entry.getKey(), entry.getValue()));
         con.setDoOutput(true);
-        if (requestMethod.equals(RequestMethod.POST)) {
+        if (!requestMethod.equals(RequestMethod.GET)) {
             try (OutputStream wr = con.getOutputStream()) {
                 wr.write(urlParameters.getBytes());
                 wr.flush();

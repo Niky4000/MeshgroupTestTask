@@ -14,12 +14,14 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import ru.meshgroup.controller.bean.AccountBean;
 import ru.meshgroup.controller.bean.LinkedBean;
 import ru.meshgroup.controller.bean.MailBean;
 import ru.meshgroup.controller.bean.PhoneBean;
 import ru.meshgroup.controller.bean.UserBean;
+import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.dao.UserDAO;
 import static ru.meshgroup.utils.DateUtils.toLocalDateFromSql;
 import ru.meshgroup.utils.SecurityUtils;
@@ -174,7 +176,8 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
-    public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) {
+    @Transactional
+    public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
         AccountBean accountBeanFrom;
         AccountBean accountBeanTo;
         if (userIdFrom.compareTo(userIdTo) < 0) {
@@ -187,6 +190,14 @@ public class UserDAOImpl implements UserDAO {
         if (accountBeanFrom != null && accountBeanTo != null && accountBeanFrom.getBalance().add(money.negate()).compareTo(BigDecimal.ZERO) >= 0) {
             update("account", "balance", new TreeMap<>(Map.of("userId", userIdFrom, "id", accountBeanFrom.getId(), "value", accountBeanFrom.getBalance().add(money.negate()))));
             update("account", "balance", new TreeMap<>(Map.of("userId", userIdTo, "id", accountBeanTo.getId(), "value", accountBeanTo.getBalance().add(money))));
+        } else if (accountBeanFrom == null && accountBeanTo == null) {
+            throw new MoneyException("It's impossible to transfer money because both accounts aren't found!");
+        } else if (accountBeanFrom == null) {
+            throw new MoneyException("It's impossible to transfer money because source account " + accountBeanFrom + " isn't found!");
+        } else if (accountBeanTo == null) {
+            throw new MoneyException("It's impossible to transfer money because target account " + accountBeanTo + " isn't found!");
+        } else {
+            throw new MoneyException("It's impossible to transfer money because balance of " + userIdFrom + " will be negative!");
         }
     }
 
@@ -200,5 +211,30 @@ public class UserDAOImpl implements UserDAO {
 
     String forUpdate() {
         return " for update";
+    }
+
+    private int DEFAULT_SIZE = 2048;
+
+    @Override
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void updateAllAccounts(double k) {
+        int offset = 0;
+        List<AccountBean> accountBeanList = null;
+        do {
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("size", getSize());
+            parameters.put("offset", offset);
+            accountBeanList = meshJdbcTemplate.query("select id,user_id,balance from account order by id limit :size offset :offset", parameters, accountRowMapper());
+            if (!accountBeanList.isEmpty()) {
+                List<Long> idList = accountBeanList.stream().map(AccountBean::getId).collect(Collectors.toList());
+                Map<String, Object> parameters2 = Map.of("k", k, "idList", idList);
+                meshJdbcTemplate.update("update account set balance=balance*:k where id in(:idList)", parameters2);
+                offset += getSize();
+            }
+        } while (!accountBeanList.isEmpty());
+    }
+
+    protected int getSize() {
+        return DEFAULT_SIZE;
     }
 }
