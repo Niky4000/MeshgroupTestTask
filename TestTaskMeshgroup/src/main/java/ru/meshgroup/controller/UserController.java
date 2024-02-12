@@ -1,5 +1,8 @@
 package ru.meshgroup.controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -23,6 +26,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import ru.meshgroup.controller.bean.TransferMoneyRequest;
 import ru.meshgroup.controller.bean.UserBean;
+import ru.meshgroup.controller.exceptions.AccountIsLockedException;
+import ru.meshgroup.controller.exceptions.DatabaseIsLocked;
 import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.service.UserService;
 import ru.meshgroup.validator.UserOnlyValidator;
@@ -39,6 +44,17 @@ public class UserController {
     UserOnlyValidator userOnlyValidator;
     @Autowired
     UserService userService;
+
+    @GetMapping("/getUserList")
+    @ResponseBody
+    public ResponseEntity<List<UserBean>> getUserList(@RequestParam(value = "name", required = false) String name, @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "email", required = false) String email, @RequestParam(value = "phone", required = false) String phone, @RequestParam(value = "size") int size, @RequestParam(value = "offset") int offset) {
+        try {
+            return new ResponseEntity<>(userService.getUserList(name, date != null ? LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null, email, phone, offset, size), HttpStatus.OK);
+        } catch (DatabaseIsLocked databaseIsLocked) {
+            return new ResponseEntity<>(new ArrayList<>(1), HttpStatus.LOCKED);
+        }
+    }
 
     @PostMapping("/addUser")
     public @ResponseBody
@@ -103,8 +119,12 @@ public class UserController {
             } else {
                 return new ResponseEntity<>("It's impossible to transfer money because source account " + username + " isn't found!", HttpStatus.BAD_REQUEST);
             }
+        } catch (DatabaseIsLocked databaseIsLocked) {
+            return new ResponseEntity<>("Database is locked! Please try later!", HttpStatus.LOCKED);
         } catch (MoneyException me) {
             return new ResponseEntity<>(me.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (AccountIsLockedException lockedException) {
+            return new ResponseEntity<>(lockedException.getMessage(), HttpStatus.CONFLICT);
         } catch (Exception me) {
             return new ResponseEntity<>("Internal server error!", HttpStatus.INTERNAL_SERVER_ERROR);
         }

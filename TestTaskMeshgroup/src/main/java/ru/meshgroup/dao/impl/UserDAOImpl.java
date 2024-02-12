@@ -7,9 +7,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.CannotSerializeTransactionException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -21,11 +25,13 @@ import ru.meshgroup.controller.bean.LinkedBean;
 import ru.meshgroup.controller.bean.MailBean;
 import ru.meshgroup.controller.bean.PhoneBean;
 import ru.meshgroup.controller.bean.UserBean;
+import ru.meshgroup.controller.exceptions.AccountIsLockedException;
 import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.dao.UserDAO;
 import static ru.meshgroup.utils.DateUtils.toLocalDateFromSql;
 import ru.meshgroup.utils.SecurityUtils;
 
+@Slf4j
 @Repository
 public class UserDAOImpl implements UserDAO {
 
@@ -180,6 +186,7 @@ public class UserDAOImpl implements UserDAO {
     public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
         AccountBean accountBeanFrom;
         AccountBean accountBeanTo;
+        log.debug("transferMoney started!");
         if (userIdFrom.compareTo(userIdTo) < 0) {
             accountBeanFrom = getLockedAccountBean(userIdFrom);
             accountBeanTo = getLockedAccountBean(userIdTo);
@@ -187,9 +194,14 @@ public class UserDAOImpl implements UserDAO {
             accountBeanTo = getLockedAccountBean(userIdTo);
             accountBeanFrom = getLockedAccountBean(userIdFrom);
         }
+        waitSomeTime(10000);
         if (accountBeanFrom != null && accountBeanTo != null && accountBeanFrom.getBalance().add(money.negate()).compareTo(BigDecimal.ZERO) >= 0) {
+            log.debug("update " + userIdFrom + " started!");
             update("account", "balance", new TreeMap<>(Map.of("userId", userIdFrom, "id", accountBeanFrom.getId(), "value", accountBeanFrom.getBalance().add(money.negate()))));
+            log.debug("update " + userIdFrom + " finished!");
+            log.debug("update " + userIdTo + " started!");
             update("account", "balance", new TreeMap<>(Map.of("userId", userIdTo, "id", accountBeanTo.getId(), "value", accountBeanTo.getBalance().add(money))));
+            log.debug("update " + userIdTo + " finished!");
         } else if (accountBeanFrom == null && accountBeanTo == null) {
             throw new MoneyException("It's impossible to transfer money because both accounts aren't found!");
         } else if (accountBeanFrom == null) {
@@ -199,10 +211,26 @@ public class UserDAOImpl implements UserDAO {
         } else {
             throw new MoneyException("It's impossible to transfer money because balance of " + userIdFrom + " will be negative!");
         }
+        log.debug("transferMoney finished!");
+    }
+
+    private void waitSomeTime(int timeToWait) {
+        while (true) {
+            try {
+                Thread.sleep(timeToWait);
+                break;
+            } catch (InterruptedException ex) {
+                Logger.getLogger(UserDAOImpl.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
     private AccountBean getLockedAccountBean(Long userId) throws DataAccessException {
-        return Optional.ofNullable(meshJdbcTemplate.query(getAccountUpdateQuery(), Map.of("userId", userId), accountRowMapper()).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
+        try {
+            return Optional.ofNullable(meshJdbcTemplate.query(getAccountUpdateQuery(), Map.of("userId", userId), accountRowMapper()).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
+        } catch (CannotSerializeTransactionException e) {
+            throw new AccountIsLockedException(userId);
+        }
     }
 
     String getAccountUpdateQuery() {
@@ -210,7 +238,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     String forUpdate() {
-        return " for update skip locked";
+        return " for update";
     }
 
     private int DEFAULT_SIZE = 2048;

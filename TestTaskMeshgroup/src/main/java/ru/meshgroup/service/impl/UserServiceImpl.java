@@ -2,6 +2,7 @@ package ru.meshgroup.service.impl;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.meshgroup.controller.bean.UserBean;
+import ru.meshgroup.controller.exceptions.DatabaseIsLocked;
 import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.dao.UserDAO;
 import ru.meshgroup.service.UserService;
@@ -26,8 +28,10 @@ import ru.meshgroup.service.bean.OperationBean;
 public class UserServiceImpl implements UserService {
 
     @Autowired
+    @Qualifier("operationLock")
     IgniteLock lock;
     @Autowired
+    @Qualifier("queuedOperationsLock")
     IgniteLock queuedOperationsLock;
     @Autowired
     UserDAO userDAO;
@@ -42,27 +46,32 @@ public class UserServiceImpl implements UserService {
     static final String CAN_NOT_UPDATE_ACCOUNTS = "updateAllAccounts operation can't be executed because previous one hasn't been finished yet!";
 
     @Override
+    public List<UserBean> getUserList(String name, LocalDate dateOfBirth, String email, String phone, int size, int offset) {
+        return exec(false, () -> userDAO.getUserList(name, dateOfBirth, email, phone, size, offset), name, dateOfBirth, email, phone, size, offset);
+    }
+
+    @Override
     public void insertUser(UserBean userBean) {
-        exec(u -> userDAO.insertUser(userBean), userBean);
+        exec(true, u -> userDAO.insertUser(userBean), userBean);
     }
 
     @Override
     public void updateUser(UserBean userBean) {
-        exec(u -> userDAO.updateUser((UserBean) u[0]), userBean);
+        exec(true, u -> userDAO.updateUser((UserBean) u[0]), userBean);
     }
 
     @Override
     public UserBean getUser(String name) {
-        return exec(() -> userDAO.getUserByName(name), name);
+        return exec(false, () -> userDAO.getUserByName(name), name);
     }
 
     @Override
     public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
-        exec(arr -> userDAO.transferMoney((Long) arr[0], (Long) arr[1], (BigDecimal) arr[2]), userIdFrom, userIdTo, money);
+        exec(true, arr -> userDAO.transferMoney((Long) arr[0], (Long) arr[1], (BigDecimal) arr[2]), userIdFrom, userIdTo, money);
     }
 
-    <T> T exec(Supplier<T> supplier, Object... obj) {
-        if (before(obj)) {
+    <T> T exec(boolean putToTheQueue, Supplier<T> supplier, Object... obj) {
+        if (before(putToTheQueue, obj)) {
             try {
                 return supplier.get();
             } finally {
@@ -73,8 +82,8 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    <T> void exec(Consumer<T[]> supplier, T... obj) {
-        if (before(obj)) {
+    <T> void exec(boolean putToTheQueue, Consumer<T[]> supplier, T... obj) {
+        if (before(putToTheQueue, obj)) {
             try {
                 supplier.accept(obj);
             } finally {
@@ -83,7 +92,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    boolean before(Object... obj) {
+    boolean before(boolean putToTheQueue, Object... obj) {
         if (lock.tryLock()) {
             try {
                 activeOperationsCounter.incrementAndGet();
@@ -92,7 +101,11 @@ public class UserServiceImpl implements UserService {
             }
             return true;
         } else {
-            operationQueue.add(new OperationBean(getMethodName(), obj));
+            if (putToTheQueue) {
+                operationQueue.add(new OperationBean(getMethodName(), obj));
+            } else {
+                throw new DatabaseIsLocked();
+            }
             return false;
         }
     }

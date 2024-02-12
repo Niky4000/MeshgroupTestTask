@@ -36,10 +36,26 @@ public class TestClient {
 //		String startResult = new WebExampleClientStart().sendPost("http://localhost:8080/?str=TestMessage", RequestMethod.GET, getAuthMap(), null);
 //		System.out.println(startResult);
 
-        addUsers(0, 100);
+//        addUsers(0, 100);
+        getUserList(8, 10);
+//        testRequest(8);
 //        updateUser(10, "2000-08-14");
 //        transferMoney(5, 10L, BigDecimal.valueOf(50.12));
-
+//        new Thread(() -> {
+//            try {
+//                transferMoney(5, 10L, BigDecimal.valueOf(50.12));
+//            } catch (Exception ex) {
+//                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+//        }).start();
+//        Thread.sleep(2000);
+//        new Thread(() -> {
+//            try {
+//                transferMoney(10, 5L, BigDecimal.valueOf(50.12));
+//            } catch (Exception ex) {
+//                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+//        }).start();
 //        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
 //        System.out.println(helloRequest);
 //        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(token), null);
@@ -87,6 +103,24 @@ public class TestClient {
         String token = getToken(authRequest);
         String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/transferMoney", RequestMethod.POST, getAuthMap(token),
                 "{\"userIdTo\": \"" + userIdTo + "\",\n\"money\": \"" + money.toString() + "\"}");
+        System.out.println(startResult);
+    }
+
+    private static void getUserList(int userFromIndex, int offset) throws Exception {
+        String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"user" + userFromIndex + "\",\n\"password\": \"password" + userFromIndex + "\"}");
+        System.out.println(authRequest);
+        String token = getToken(authRequest);
+        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/getUserList?name=user&date=2000-04-02&offset=" + offset + "&size=20", RequestMethod.GET, getAuthMap(token), null);
+//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/getUserList?name=user&offset=" + offset + "&size=20", RequestMethod.GET, getAuthMap(token), null);
+        System.out.println(startResult);
+    }
+
+    private static void testRequest(int userFromIndex) throws Exception {
+        String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"user" + userFromIndex + "\",\n\"password\": \"password" + userFromIndex + "\"}");
+        System.out.println(authRequest);
+        String token = getToken(authRequest);
+        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(token), null);
+        System.out.println(startResult);
         System.out.println(startResult);
     }
 

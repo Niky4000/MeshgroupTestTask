@@ -119,11 +119,13 @@ public class Configuration {
     }
 
     @Bean
+    @Qualifier("operationLock")
     public IgniteLock getLock(Ignite ignite) {
         return ignite.reentrantLock("operationLock", true, false, true);
     }
 
     @Bean
+    @Qualifier("queuedOperationsLock")
     public IgniteLock getQueuedOperationsLock(Ignite ignite) {
         return ignite.reentrantLock("queuedOperationsLock", true, false, true);
     }
