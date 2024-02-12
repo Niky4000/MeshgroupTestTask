@@ -194,7 +194,6 @@ public class UserDAOImpl implements UserDAO {
             accountBeanTo = getLockedAccountBean(userIdTo);
             accountBeanFrom = getLockedAccountBean(userIdFrom);
         }
-        waitSomeTime(10000);
         if (accountBeanFrom != null && accountBeanTo != null && accountBeanFrom.getBalance().add(money.negate()).compareTo(BigDecimal.ZERO) >= 0) {
             log.debug("update " + userIdFrom + " started!");
             update("account", "balance", new TreeMap<>(Map.of("userId", userIdFrom, "id", accountBeanFrom.getId(), "value", accountBeanFrom.getBalance().add(money.negate()))));
@@ -212,17 +211,6 @@ public class UserDAOImpl implements UserDAO {
             throw new MoneyException("It's impossible to transfer money because balance of " + userIdFrom + " will be negative!");
         }
         log.debug("transferMoney finished!");
-    }
-
-    private void waitSomeTime(int timeToWait) {
-        while (true) {
-            try {
-                Thread.sleep(timeToWait);
-                break;
-            } catch (InterruptedException ex) {
-                Logger.getLogger(UserDAOImpl.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
     }
 
     private AccountBean getLockedAccountBean(Long userId) throws DataAccessException {
