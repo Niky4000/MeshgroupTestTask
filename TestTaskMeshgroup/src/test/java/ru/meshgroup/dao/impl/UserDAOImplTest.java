@@ -2,20 +2,35 @@ package ru.meshgroup.dao.impl;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import javax.sql.DataSource;
 import liquibase.exception.LiquibaseException;
+import org.apache.tomcat.jdbc.pool.PoolProperties;
 import org.junit.Assert;
 import org.junit.Test;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.testcontainers.containers.PostgreSQLContainer;
 import ru.meshgroup.controller.bean.MailBean;
 import ru.meshgroup.controller.bean.PhoneBean;
 import ru.meshgroup.controller.bean.UserBean;
 import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.test.utils.InitUtils;
+import static ru.meshgroup.utils.DbUtils.getJdbcTemplate;
+import static ru.meshgroup.utils.DbUtils.getTransactionManager;
+import static ru.meshgroup.utils.DbUtils.liquibase;
+import ru.meshgroup.utils.FieldUtil;
 
 public class UserDAOImplTest extends InitUtils {
 
@@ -88,24 +103,135 @@ public class UserDAOImplTest extends InitUtils {
                 return "";
             }
         }, userDAOImpl -> {
-            try {
-                final BigDecimal money1 = BigDecimal.valueOf(200.82);
-                final BigDecimal moneyToTransfer = BigDecimal.valueOf(100);
-                final BigDecimal money2 = money1.add(moneyToTransfer.multiply(BigDecimal.valueOf(2)));
-                userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", money1, 1, 2, 3, 4));
-                userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", money2, 5, 6, 7, 8, 9, 10, 11, 12));
-                userDAOImpl.transferMoney(1L, 2L, moneyToTransfer);
-                UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUserByName("name"));
-                UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUserByName("name2"));
-                Assert.assertTrue(user1.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(100.82)));
-                Assert.assertTrue(user2.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(500.82)));
-                userDAOImpl.transferMoney(2L, 1L, moneyToTransfer.multiply(BigDecimal.valueOf(2)));
-                UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUserByName("name"));
-                UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUserByName("name2"));
-                Assert.assertTrue(user3.getAccountBeanList().get(0).getBalance().equals(user4.getAccountBeanList().get(0).getBalance()));
-            } catch (MoneyException ex) {
-                throw new RuntimeException(ex);
-            }
+            transferMoneyTestImpl(userDAOImpl);
         });
+    }
+
+    private void transferMoneyTestImpl(UserDAOImpl userDAOImpl) throws RuntimeException {
+        try {
+            final BigDecimal money1 = BigDecimal.valueOf(200.82);
+            final BigDecimal moneyToTransfer = BigDecimal.valueOf(100);
+            final BigDecimal money2 = money1.add(moneyToTransfer.multiply(BigDecimal.valueOf(2)));
+            userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", money1, 1, 2, 3, 4));
+            userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", money2, 5, 6, 7, 8, 9, 10, 11, 12));
+            userDAOImpl.transferMoney(1L, 2L, moneyToTransfer);
+            UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUserByName("name"));
+            UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUserByName("name2"));
+            Assert.assertTrue(user1.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(100.82)));
+            Assert.assertTrue(user2.getAccountBeanList().get(0).getBalance().equals(BigDecimal.valueOf(500.82)));
+            userDAOImpl.transferMoney(2L, 1L, moneyToTransfer.multiply(BigDecimal.valueOf(2)));
+            UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUserByName("name"));
+            UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUserByName("name2"));
+            Assert.assertTrue(user3.getAccountBeanList().get(0).getBalance().equals(user4.getAccountBeanList().get(0).getBalance()));
+        } catch (MoneyException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void transferMoneyTestImpl2(UserDAOImpl userDAOImpl) throws RuntimeException {
+        try {
+            userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", BigDecimal.valueOf(200.82), 1, 2, 3, 4));
+            userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", BigDecimal.valueOf(200.82), 5, 6, 7, 8, 9, 10, 11, 12));
+            Thread thread = new Thread(() -> userDAOImpl.transferMoney(1L, 2L, BigDecimal.valueOf(20)));
+            thread.setName("thread1");
+            thread.start();
+            waitSomeTime(4000);
+            Thread thread2 = new Thread(() -> userDAOImpl.transferMoney(2L, 1L, BigDecimal.valueOf(20)));
+            thread2.setName("thread2");
+            thread2.start();
+            join(thread);
+            join(thread2);
+        } catch (MoneyException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    @Test
+    public void testUsingTestContainers() throws SQLException {
+        executeUsingPostgre(() -> new UserDAOImpl(), this::transferMoneyTestImpl);
+    }
+
+    @Test
+    public void testUsingTestContainers2() throws SQLException {
+        executeUsingPostgre(() -> new UserDAOImpl() {
+            @Override
+            public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
+                System.out.println("-------------------  transferMoney " + userIdFrom + "->" + userIdTo + " started for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                super.transferMoney(userIdFrom, userIdTo, money);
+                System.out.println("-------------------  transferMoney " + userIdFrom + "->" + userIdTo + " finished for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            }
+
+            @Override
+            int update(String tableName, String fieldName, Map<String, Object> parameters) {
+                System.out.println("-------------------  update started for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                int update = super.update(tableName, fieldName, parameters);
+                waitSomeTime(20000);
+                System.out.println("-------------------  update finished for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                return update;
+            }
+        }, this::transferMoneyTestImpl2);
+    }
+
+    private void join(Thread thread) {
+        while (true) {
+            try {
+                thread.join();
+                break;
+            } catch (InterruptedException ex) {
+                Logger.getLogger(UserDAOImplTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    private void waitSomeTime(int timeToWait) {
+        while (true) {
+            try {
+                Thread.sleep(timeToWait);
+                break;
+            } catch (InterruptedException ex) {
+                Logger.getLogger(UserDAOImplTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    public void executeUsingPostgre(Supplier<UserDAOImpl> userDAOImplSupplier, Consumer<UserDAOImpl> testImplementation) throws SQLException {
+        PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+        postgres.start();
+        try {
+            DataSource dataSource = createDataSource(postgres);
+            try {
+                liquibase(dataSource, "classpath:db/changelog/master.xml");
+                PlatformTransactionManager transactionManager = getTransactionManager(dataSource);
+                NamedParameterJdbcTemplate meshJdbcTemplate = getJdbcTemplate(dataSource);
+                UserDAOImpl userDAOImpl = userDAOImplSupplier.get();
+                FieldUtil.setField(userDAOImpl, UserDAOImpl.class, meshJdbcTemplate, "meshJdbcTemplate");
+                testImplementation.accept(userDAOImpl);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+            System.out.println("Hello!");
+        } finally {
+            postgres.stop();
+        }
+    }
+
+    public static org.apache.tomcat.jdbc.pool.DataSource createDataSource(PostgreSQLContainer<?> postgres) {
+        org.apache.tomcat.jdbc.pool.DataSource ds = new org.apache.tomcat.jdbc.pool.DataSource();
+        PoolProperties props = setDataSourceProperties(postgres);
+        ds.setPoolProperties(props);
+        return ds;
+    }
+
+    private static PoolProperties setDataSourceProperties(PostgreSQLContainer<?> postgres) {
+        PoolProperties p = new PoolProperties();
+        p.setName("PostgreDataSource");
+        p.setDriverClassName(postgres.getDriverClassName());
+        p.setUrl(postgres.getJdbcUrl());
+        p.setUsername(postgres.getUsername());
+        p.setPassword(postgres.getPassword());
+        p.setInitialSize(2);
+        p.setMinIdle(2);
+        return p;
     }
 }

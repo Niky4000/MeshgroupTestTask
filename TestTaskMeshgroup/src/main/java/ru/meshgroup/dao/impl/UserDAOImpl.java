@@ -163,20 +163,20 @@ public class UserDAOImpl implements UserDAO {
         return phoneBeanList;
     }
 
-    private int insert(String tableName, TreeMap<String, Object> parameters) {
+    int insert(String tableName, TreeMap<String, Object> parameters) {
         return meshJdbcTemplate.update(new StringBuilder("insert into ").append(tableName).append(" (").append(parameters.keySet().stream().reduce((p1, p2) -> p1 + "," + p2).get()).append(")").append(" values(").append(":").append(parameters.keySet().stream().reduce((p1, p2) -> p1 + ",:" + p2).get()).append(")").toString(), parameters);
     }
 
-    private int update(String tableName, String fieldName, Map<String, Object> parameters) {
+    int update(String tableName, String fieldName, Map<String, Object> parameters) {
         return meshJdbcTemplate.update(new StringBuilder("update ").append(tableName).append(" set ").append(fieldName).append("=:value where id=:id and user_id=:userId").toString(), parameters);
     }
 
-    private int delete(String tableName, Map<String, Object> parameters) {
+    int delete(String tableName, Map<String, Object> parameters) {
         return meshJdbcTemplate.update(new StringBuilder("delete from ").append(tableName).append(" where id=:id and user_id=:userId").toString(), parameters);
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
         AccountBean accountBeanFrom;
         AccountBean accountBeanTo;
@@ -210,7 +210,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     String forUpdate() {
-        return " for update";
+        return " for update skip locked";
     }
 
     private int DEFAULT_SIZE = 2048;
