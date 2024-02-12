@@ -12,7 +12,7 @@ public interface UserDAO {
 
     public void insertUser(UserBean userBean);
 
-    public UserBean getUser(String name);
+    public UserBean getUserByName(String name);
 
     public UserBean getUser(UserBean userBean);
 

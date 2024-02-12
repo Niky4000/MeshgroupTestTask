@@ -19,3 +19,11 @@ app:
   task:
     scheduling:
       updateBalance: ${UPDATE_BALANCE:30000}
+ignite:
+  host-list: ${IGNITE_HOST_LIST:localhost,localhost}
+  instance-name: ${IGNITE_INSTANCE_NAME:meshgroup}
+  port: ${IGNITE_PORT:40000}
+  end-port: ${IGNITE_END_PORT:40040}
+  local-port: ${IGNITE_LOCAL_PORT:40050}
+  client-port: ${IGNITE_CLIENT_PORT:40100}
+  client-port-range: ${IGNITE_CLIENT_PORT:20}

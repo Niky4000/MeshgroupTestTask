@@ -29,7 +29,7 @@ public class ScheduledTaskTest extends InitUtils {
         UserServiceImpl userService = new UserServiceImpl() {
             @Override
             public void updateAllAccounts(double k) {
-                super.updateAllAccounts(kk);
+                userDAO.updateAllAccounts(kk);
             }
         };
         FieldUtil.setField(userService, UserServiceImpl.class, userDAO, "userDAO");
@@ -49,14 +49,14 @@ public class ScheduledTaskTest extends InitUtils {
             userDAOImpl.insertUser(createUserBean2(7L, LocalDate.of(2006, Month.APRIL, 28), "name7", money3, 27));
             userDAOImpl.insertUser(createUserBean2(8L, LocalDate.of(2007, Month.APRIL, 28), "name8", money4, 28));
             task.updateBalance();
-            UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUser("name"));
-            UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUser("name2"));
-            UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUser("name3"));
-            UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUser("name4"));
-            UserBean user5 = userDAOImpl.getUser(userDAOImpl.getUser("name5"));
-            UserBean user6 = userDAOImpl.getUser(userDAOImpl.getUser("name6"));
-            UserBean user7 = userDAOImpl.getUser(userDAOImpl.getUser("name7"));
-            UserBean user8 = userDAOImpl.getUser(userDAOImpl.getUser("name8"));
+            UserBean user1 = userDAOImpl.getUser(userDAOImpl.getUserByName("name"));
+            UserBean user2 = userDAOImpl.getUser(userDAOImpl.getUserByName("name2"));
+            UserBean user3 = userDAOImpl.getUser(userDAOImpl.getUserByName("name3"));
+            UserBean user4 = userDAOImpl.getUser(userDAOImpl.getUserByName("name4"));
+            UserBean user5 = userDAOImpl.getUser(userDAOImpl.getUserByName("name5"));
+            UserBean user6 = userDAOImpl.getUser(userDAOImpl.getUserByName("name6"));
+            UserBean user7 = userDAOImpl.getUser(userDAOImpl.getUserByName("name7"));
+            UserBean user8 = userDAOImpl.getUser(userDAOImpl.getUserByName("name8"));
             Assert.assertTrue(user1.getAccountBeanList().get(0).getBalance().equals(money1.multiply(BigDecimal.valueOf(kk))));
             Assert.assertTrue(user2.getAccountBeanList().get(0).getBalance().equals(money2.multiply(BigDecimal.valueOf(kk))));
             Assert.assertTrue(user3.getAccountBeanList().get(0).getBalance().equals(money3.multiply(BigDecimal.valueOf(kk))));

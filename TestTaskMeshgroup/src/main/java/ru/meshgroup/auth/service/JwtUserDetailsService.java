@@ -26,7 +26,7 @@ public class JwtUserDetailsService implements UserDetailsService {
         if (ADMIN_USER.equals(username)) {
             return new User(ADMIN_USER, passwordEncoder.encode(ADMIN_PASSWORD), new ArrayList<>());
         } else {
-            UserBean user = userDAO.getUser(username);
+            UserBean user = userDAO.getUserByName(username);
             if (user == null) {
                 throw new UsernameNotFoundException("User not found with username: " + username);
             } else {

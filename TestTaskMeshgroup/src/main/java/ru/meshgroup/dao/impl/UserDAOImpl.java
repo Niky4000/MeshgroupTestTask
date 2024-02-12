@@ -85,7 +85,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
-    public UserBean getUser(String name) {
+    public UserBean getUserByName(String name) {
         UserBean user = Optional.ofNullable(meshJdbcTemplate.query("select id,name,date_of_birth,password from users where name=:name", Map.of("name", name), getUserRowMapper()).stream().collect(Collectors.toList())).filter(l -> l.size() == 1).map(l -> l.get(0)).orElse(null);
         return user;
     }
