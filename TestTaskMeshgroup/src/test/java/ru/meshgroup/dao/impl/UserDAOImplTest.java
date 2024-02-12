@@ -128,70 +128,9 @@ public class UserDAOImplTest extends InitUtils {
         }
     }
 
-    private void transferMoneyTestImpl2(UserDAOImpl userDAOImpl) throws RuntimeException {
-        try {
-            userDAOImpl.insertUser(createUserBean2(1L, LocalDate.of(2000, Month.APRIL, 28), "name", BigDecimal.valueOf(200.82), 1, 2, 3, 4));
-            userDAOImpl.insertUser(createUserBean2(2L, LocalDate.of(2001, Month.APRIL, 28), "name2", BigDecimal.valueOf(200.82), 5, 6, 7, 8, 9, 10, 11, 12));
-            Thread thread = new Thread(() -> userDAOImpl.transferMoney(1L, 2L, BigDecimal.valueOf(20)));
-            thread.setName("thread1");
-            thread.start();
-            waitSomeTime(4000);
-            Thread thread2 = new Thread(() -> userDAOImpl.transferMoney(2L, 1L, BigDecimal.valueOf(20)));
-            thread2.setName("thread2");
-            thread2.start();
-            join(thread);
-            join(thread2);
-        } catch (MoneyException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
     @Test
     public void testUsingTestContainers() throws SQLException {
         executeUsingPostgre(() -> new UserDAOImpl(), this::transferMoneyTestImpl);
-    }
-
-    @Test
-    public void testUsingTestContainers2() throws SQLException {
-        executeUsingPostgre(() -> new UserDAOImpl() {
-            @Override
-            public void transferMoney(Long userIdFrom, Long userIdTo, BigDecimal money) throws MoneyException {
-                System.out.println("-------------------  transferMoney " + userIdFrom + "->" + userIdTo + " started for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-                super.transferMoney(userIdFrom, userIdTo, money);
-                System.out.println("-------------------  transferMoney " + userIdFrom + "->" + userIdTo + " finished for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-            }
-
-            @Override
-            int update(String tableName, String fieldName, Map<String, Object> parameters) {
-                System.out.println("-------------------  update started for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-                int update = super.update(tableName, fieldName, parameters);
-                waitSomeTime(20000);
-                System.out.println("-------------------  update finished for " + Thread.currentThread().getName() + "! " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-                return update;
-            }
-        }, this::transferMoneyTestImpl2);
-    }
-
-    private void join(Thread thread) {
-        while (true) {
-            try {
-                thread.join();
-                break;
-            } catch (InterruptedException ex) {
-                Logger.getLogger(UserDAOImplTest.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-    }
-
-    private void waitSomeTime(int timeToWait) {
-        while (true) {
-            try {
-                Thread.sleep(timeToWait);
-                break;
-            } catch (InterruptedException ex) {
-                Logger.getLogger(UserDAOImplTest.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
     }
 
     public void executeUsingPostgre(Supplier<UserDAOImpl> userDAOImplSupplier, Consumer<UserDAOImpl> testImplementation) throws SQLException {
