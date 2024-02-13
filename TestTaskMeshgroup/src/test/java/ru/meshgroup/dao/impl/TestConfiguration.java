@@ -92,14 +92,9 @@ public class TestConfiguration {
         return new LiquibaseProperties();
     }
 
-//    @Bean
-//    public OpenAPI customOpenApi() {
-//        return new OpenAPI().info(new Info().title("Mesh Service API"));
-//    }
     private static SpringLiquibase springLiquibase(DataSource dataSource, LiquibaseProperties properties) {
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setDataSource(dataSource);
-//        liquibase.setChangeLog(properties.getChangeLog());
         liquibase.setChangeLog("classpath:/db/changelog/master.xml");
         liquibase.setContexts(properties.getContexts());
         liquibase.setDefaultSchema(properties.getDefaultSchema());
@@ -146,7 +141,6 @@ public class TestConfiguration {
         return ignite.queue("operationQueue", 0, new CollectionConfiguration().setGroupName("queues")
                 .setAtomicityMode(CacheAtomicityMode.ATOMIC).setBackups(1).setCacheMode(CacheMode.PARTITIONED)
                 .setCollocated(true));
-//        return ignite.queue("operationQueue", 0, null);
     }
 
     @Bean

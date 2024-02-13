@@ -2,17 +2,13 @@ package ru.meshgroup.dao.impl;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import liquibase.exception.LiquibaseException;
@@ -20,7 +16,6 @@ import org.apache.tomcat.jdbc.pool.PoolProperties;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 import ru.meshgroup.controller.bean.MailBean;
 import ru.meshgroup.controller.bean.PhoneBean;
@@ -28,7 +23,6 @@ import ru.meshgroup.controller.bean.UserBean;
 import ru.meshgroup.controller.exceptions.MoneyException;
 import ru.meshgroup.test.utils.InitUtils;
 import static ru.meshgroup.utils.DbUtils.getJdbcTemplate;
-import static ru.meshgroup.utils.DbUtils.getTransactionManager;
 import static ru.meshgroup.utils.DbUtils.liquibase;
 import ru.meshgroup.utils.FieldUtil;
 
@@ -140,7 +134,6 @@ public class UserDAOImplTest extends InitUtils {
             DataSource dataSource = createDataSource(postgres);
             try {
                 liquibase(dataSource, "classpath:db/changelog/master.xml");
-                PlatformTransactionManager transactionManager = getTransactionManager(dataSource);
                 NamedParameterJdbcTemplate meshJdbcTemplate = getJdbcTemplate(dataSource);
                 UserDAOImpl userDAOImpl = userDAOImplSupplier.get();
                 FieldUtil.setField(userDAOImpl, UserDAOImpl.class, meshJdbcTemplate, "meshJdbcTemplate");

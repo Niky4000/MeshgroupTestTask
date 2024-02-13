@@ -16,68 +16,52 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 public class TestClient {
 
     public static void main(String[] args) throws Exception {
-//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(), null);
-//        System.out.println(startResult);
-//		String startResult = new WebExampleClientStart().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(), null);
-//		System.out.println(startResult);
-//        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/test2", RequestMethod.POST, getAuthMap(), "Hello! Hello post method " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()) + "!");
-//        System.out.println(startResult2);
-//		String startResult2 = new WebExampleClientStart().sendPost("http://localhost:8080/api/url-controller/shorten-url", RequestMethod.POST, getAuthMap(), "http://codenco.us/very-long-string-fkfdonsdjkbfkjsdbkdsnbfkdsnbfksdbfdskbdekjblnfd");
-//		System.out.println(startResult2);
-//		String startResult2 = new WebExampleClientStart().sendPost("http://localhost:8080/", RequestMethod.POST, getAuthMap(), "Message");
-//		System.out.println(startResult2);
-//		String startResult2 = new WebExampleClientStart().sendPost("http://localhost:8080/api/url-controller/get-url", RequestMethod.POST, getAuthMap(), "231caeb5-3748-4c9b-9265-81e2453cb623");
-//		System.out.println(startResult2);
-//		String startResult = new WebExampleClientStart().sendPost("http://localhost:8080/?str=TestMessage", RequestMethod.GET, getAuthMap(), null);
-//		System.out.println(startResult);
+        if (args.length == 1) {
+            if (args[0].equals("1")) {
+                addUsers(0, 100);
+            } else if (args[0].equals("2")) {
+                getUserList(8, 10);
+            } else if (args[0].equals("3")) {
+                testRequest(8);
+            } else if (args[0].equals("4")) {
+                updateUser(10, "2000-08-14");
+            } else if (args[0].equals("5")) {
+                transferMoney(5, 10L, BigDecimal.valueOf(50.12));
+            } else if (args[0].equals("6")) {
+                transferMoneyConcurrently();
+            }
+        }
+    }
 
-//        addUsers(0, 100);
-        getUserList(8, 10);
-//        testRequest(8);
-//        updateUser(10, "2000-08-14");
-//        transferMoney(5, 10L, BigDecimal.valueOf(50.12));
-//        new Thread(() -> {
-//            try {
-//                transferMoney(5, 10L, BigDecimal.valueOf(50.12));
-//            } catch (Exception ex) {
-//                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//        }).start();
-//        Thread.sleep(2000);
-//        new Thread(() -> {
-//            try {
-//                transferMoney(10, 5L, BigDecimal.valueOf(50.12));
-//            } catch (Exception ex) {
-//                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//        }).start();
-//        String helloRequest = new TestClient().sendPost("http://localhost:8080/hello", RequestMethod.GET, getAuthMap(token), null);
-//        System.out.println(helloRequest);
-//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/test?str=Hello%20" + new SimpleDateFormat("yyyy-MM-dd%20HH:mm:ss:SSS").format(new Date()) + "!", RequestMethod.GET, getAuthMap(token), null);
-//        System.out.println(startResult);
-//        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/test2", RequestMethod.POST, getAuthMap(token), "Hello! Hello post method " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()) + "!");
-//        System.out.println(startResult2);
-//            String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/addUser", RequestMethod.POST, getAuthMap(token),
-//                    "{\"id\": \"2\",\n\"name\": \"user2\",\n\"dateOfBirth\": \"2023-05-12\",\n\"password\": \"password\""
-//                    + ",\n\"accountBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"balance\": \"200\"}]"
-//                    + ",\n\"mailBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"email\": \"hello@world.ru\"}]"
-//                    + ",\n\"phoneBeanList\": [{\"id\": \"2\",\"userId\": \"2\",\"phone\": \"8-927-777-77-77\"}]}");
-//            System.out.println(startResult);
-//        System.out.println(startResult2);
-//        String startResult2 = new TestClient().sendPost("http://localhost:8080/api/test-controller/addUser", RequestMethod.POST, getAuthMap(token), "{\"name\": \"user2\",\n\"password\": \"password\"}");
+    static void transferMoneyConcurrently() throws InterruptedException {
+        new Thread(() -> {
+            try {
+                transferMoney(5, 10L, BigDecimal.valueOf(50.12));
+            } catch (Exception ex) {
+                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }).start();
+        Thread.sleep(2000);
+        new Thread(() -> {
+            try {
+                transferMoney(10, 5L, BigDecimal.valueOf(50.12));
+            } catch (Exception ex) {
+                Logger.getLogger(TestClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }).start();
     }
 
     private static void updateUser(int index, String birthDay) throws Exception {
         String authRequest = new TestClient().sendPost("http://localhost:8080/authenticate", RequestMethod.POST, getAuthMap(), "{\"username\": \"user" + index + "\",\n\"password\": \"password" + index + "\"}");
         System.out.println(authRequest);
         String token = getToken(authRequest);
-//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/updateUser", RequestMethod.POST, getAuthMap(token),
-//                "{\"id\": \"2\",\n\"name\": \"user2\",\n\"dateOfBirth\": \"2023-05-12\",\n\"password\": \"password\"}");
         String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/updateUser", RequestMethod.POST, getAuthMap(token),
                 "{\"id\": \"" + index + "\",\n\"name\": \"user" + index + "\",\n\"dateOfBirth\": \"" + birthDay + "\",\n\"password\": \"password" + index + "\"}");
         System.out.println(startResult);
@@ -111,7 +95,6 @@ public class TestClient {
         System.out.println(authRequest);
         String token = getToken(authRequest);
         String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/getUserList?name=user&date=2000-04-02&offset=" + offset + "&size=20", RequestMethod.GET, getAuthMap(token), null);
-//        String startResult = new TestClient().sendPost("http://localhost:8080/api/test-controller/getUserList?name=user&offset=" + offset + "&size=20", RequestMethod.GET, getAuthMap(token), null);
         System.out.println(startResult);
     }
 
@@ -158,10 +141,6 @@ public class TestClient {
 
     private static String createMail(int index) {
         return "hello" + index + "@world.ru";
-    }
-
-    private String removeSpaces(String digitAsString) {
-        return digitAsString.replace(" ", "");
     }
 
     private static final String TOKEN_HEAD = "{\"token\":\"";
