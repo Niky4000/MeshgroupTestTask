@@ -24,7 +24,7 @@
 						<configuration>
 							<archive>
 								<manifest>
-									<mainClass>ru.kiokle.webexampleclient.WebExampleClientStart</mainClass>
+									<mainClass>ru.meshgroup.testtaskmeshgroupclient.TestClient</mainClass>
 								</manifest>
 							</archive>
 							<descriptorRefs>

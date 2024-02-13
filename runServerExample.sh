@@ -1,0 +1,1 @@
+/usr/lib/jvm/jdk-11/bin/java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=21044 -Dspring.config.location=mesh-service.properties -Dlog.fileBaseDir=logs -jar TestTaskMeshgroup/target/TestTaskMeshgroup-0.1.jar --server.port=8080
